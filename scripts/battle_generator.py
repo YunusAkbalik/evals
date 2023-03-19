@@ -3,7 +3,6 @@
 import json
 import os
 import string
-from typing import Any
 
 REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "../evals/registry")
 
