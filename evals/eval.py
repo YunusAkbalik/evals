@@ -37,6 +37,27 @@ def set_max_samples(max_samples: int):
     _MAX_SAMPLES = max_samples
 
 
+async def async_eval_all_samples(
+        eval_fn: Callable[[Tuple[Any, int]], Awaitable[Tuple[int, Any]]],
+    samples: List[Any],
+    concurrency: int = 32,
+    show_progress: bool = True,
+):
+    work_items = _index_samples(samples)
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def eval_fn_with_semaphore(args):
+        async with semaphore:
+            return await eval_fn(args)
+
+    futures = [asyncio.ensure_future(eval_fn_with_semaphore(args)) for args in work_items]
+
+    for future in tqdm(
+        asyncio.as_completed(futures), total=len(samples), disable=not show_progress
+    ):
+        await future
+
+
 class Eval(abc.ABC):
     """
     Evaluation classes generally should override two methods:
@@ -78,27 +99,6 @@ class Eval(abc.ABC):
     def run(self, recorder: RecorderBase) -> Dict[str, float]:
         """Run the evaluation with the corresponding recorder."""
         raise NotImplementedError()
-
-    async def async_eval_all_samples(
-        self,
-        eval_fn: Callable[[Tuple[Any, int]], Awaitable[Tuple[int, Any]]],
-        samples: List[Any],
-        concurrency: int = 32,
-        show_progress: bool = True,
-    ):
-        work_items = _index_samples(samples)
-        semaphore = asyncio.Semaphore(concurrency)
-
-        async def eval_fn_with_semaphore(args):
-            async with semaphore:
-                return await eval_fn(args)
-
-        futures = [asyncio.ensure_future(eval_fn_with_semaphore(args)) for args in work_items]
-
-        for future in tqdm(
-            asyncio.as_completed(futures), total=len(samples), disable=not show_progress
-        ):
-            await future
 
     def eval_all_samples(
         self,

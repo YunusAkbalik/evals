@@ -26,47 +26,74 @@ DEFAULT_SYSTEM_PATHS = [
 ]
 
 
+def _dereference(name: str, d: dict, object: str, type: Type) -> Any | None:
+    if not name in d:
+        return None
+
+    def get_alias():
+        if isinstance(d[name], str):
+            return d[name]
+        if isinstance(d[name], dict) and "id" in d[name]:
+            return d[name]["id"]
+        return None
+
+    logger.debug(f"Looking for {name}")
+    while True:
+        alias = get_alias()
+
+        if alias is None:
+            break
+        name = alias
+
+    spec = d[name]
+
+    try:
+        return type(**spec)
+    except TypeError as e:
+        raise TypeError(f"Error while processing {object} {name}: {e}")
+
+
+def _process_file(registry, path):
+    with open(path, "r") as f:
+        d = yaml.safe_load(f)
+
+    if d is None:
+        # no entries in the file
+        return
+
+    for name, spec in d.items():
+        assert name not in registry, f"duplicate entry: {name} from {path}"
+        if isinstance(spec, dict):
+            if "key" in spec:
+                raise ValueError(
+                    f"key is a reserved keyword, but was used in {name} from {path}"
+                )
+            if "group" in spec:
+                raise ValueError(
+                    f"group is a reserved keyword, but was used in {name} from {path}"
+                )
+            if "cls" in spec:
+                raise ValueError(
+                    f"cls is a reserved keyword, but was used in {name} from {path}"
+                )
+
+            spec["key"] = name
+            spec["group"] = str(os.path.basename(path).split(".")[0])
+            if "class" in spec:
+                spec["cls"] = spec["class"]
+                del spec["class"]
+        registry[name] = spec
+
+
 class Registry:
     def __init__(self, registry_paths: Sequence[Union[str, Path]] = DEFAULT_PATHS):
         self._registry_paths = [Path(p) if isinstance(p, str) else p for p in registry_paths]
 
-    def make_callable(self, spec):
-        return partial(make_object(spec.cls).create_and_run, **(spec.args or {}))
-
-    def get_class(self, spec: dict) -> Any:
-        return make_object(spec.cls, **(spec.args if spec.args else {}))
-
-    def _dereference(self, name: str, d: dict, object: str, type: Type) -> dict:
-        if not name in d:
-            return None
-
-        def get_alias():
-            if isinstance(d[name], str):
-                return d[name]
-            if isinstance(d[name], dict) and "id" in d[name]:
-                return d[name]["id"]
-            return None
-
-        logger.debug(f"Looking for {name}")
-        while True:
-            alias = get_alias()
-
-            if alias is None:
-                break
-            name = alias
-
-        spec = d[name]
-
-        try:
-            return type(**spec)
-        except TypeError as e:
-            raise TypeError(f"Error while processing {object} {name}: {e}")
-
     def get_eval(self, name: str) -> EvalSpec:
-        return self._dereference(name, self._evals, "eval", EvalSpec)
+        return _dereference(name, self._evals, "eval", EvalSpec)
 
     def get_eval_set(self, name: str) -> EvalSetSpec:
-        return self._dereference(name, self._eval_sets, "eval set", EvalSetSpec)
+        return _dereference(name, self._eval_sets, "eval set", EvalSetSpec)
 
     def get_evals(self, patterns: Sequence[str]) -> Iterator[EvalSpec]:
         # valid patterns: hello, hello.dev*, hello.dev.*-v1
@@ -88,7 +115,7 @@ class Registry:
                 base_evals.append(self.get_base_eval(name))
         return base_evals
 
-    def get_base_eval(self, name: str) -> BaseEvalSpec:
+    def get_base_eval(self, name: str) -> BaseEvalSpec | None:
         if not name in self._evals:
             return None
 
@@ -103,41 +130,10 @@ class Registry:
         alias = spec_or_alias
         return BaseEvalSpec(id=alias)
 
-    def _process_file(self, registry, path):
-        with open(path, "r") as f:
-            d = yaml.safe_load(f)
-
-        if d is None:
-            # no entries in the file
-            return
-
-        for name, spec in d.items():
-            assert name not in registry, f"duplicate entry: {name} from {path}"
-            if isinstance(spec, dict):
-                if "key" in spec:
-                    raise ValueError(
-                        f"key is a reserved keyword, but was used in {name} from {path}"
-                    )
-                if "group" in spec:
-                    raise ValueError(
-                        f"group is a reserved keyword, but was used in {name} from {path}"
-                    )
-                if "cls" in spec:
-                    raise ValueError(
-                        f"cls is a reserved keyword, but was used in {name} from {path}"
-                    )
-
-                spec["key"] = name
-                spec["group"] = str(os.path.basename(path).split(".")[0])
-                if "class" in spec:
-                    spec["cls"] = spec["class"]
-                    del spec["class"]
-            registry[name] = spec
-
     def _process_directory(self, registry, path):
         files = Path(path).glob("*.yaml")
         for file in files:
-            self._process_file(registry, file)
+            _process_file(registry, file)
 
     def _load_registry(self, paths):
         registry = {}
@@ -147,7 +143,7 @@ class Registry:
                 if os.path.isdir(path):
                     self._process_directory(registry, path)
                 else:
-                    self._process_file(registry, path)
+                    _process_file(registry, path)
         return registry
 
     @functools.cached_property

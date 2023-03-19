@@ -75,6 +75,10 @@ def is_chat_prompt(prompt: Prompt) -> bool:
     return isinstance(prompt, list) and all(isinstance(msg, dict) for msg in prompt)
 
 
+def _render_chat_prompt_as_text(prompt: OpenAICreateChatPrompt) -> OpenAICreatePrompt:
+    return chat_prompt_to_text_prompt(prompt)
+
+
 @dataclass
 class CompletionPrompt(Prompt):
     """
@@ -83,13 +87,18 @@ class CompletionPrompt(Prompt):
 
     raw_prompt: Union[OpenAICreatePrompt, OpenAICreateChatPrompt]
 
-    def _render_chat_prompt_as_text(self, prompt: OpenAICreateChatPrompt) -> OpenAICreatePrompt:
-        return chat_prompt_to_text_prompt(prompt)
-
     def to_openai_create_prompt(self) -> OpenAICreatePrompt:
         if is_chat_prompt(self.raw_prompt):
-            return self._render_chat_prompt_as_text(self.raw_prompt)
+            return _render_chat_prompt_as_text(self.raw_prompt)
         return self.raw_prompt
+
+
+def _render_text_as_chat_prompt(prompt: str) -> OpenAICreateChatPrompt:
+    """
+    Render a text string as a chat prompt. The default option we adopt here is to simply take the full prompt
+    and treat it as a system message.
+    """
+    return text_prompt_to_chat_prompt(prompt)
 
 
 @dataclass
@@ -102,14 +111,7 @@ class ChatCompletionPrompt(Prompt):
 
     raw_prompt: Union[OpenAICreatePrompt, OpenAICreateChatPrompt]
 
-    def _render_text_as_chat_prompt(self, prompt: str) -> OpenAICreateChatPrompt:
-        """
-        Render a text string as a chat prompt. The default option we adopt here is to simply take the full prompt
-        and treat it as a system message.
-        """
-        return text_prompt_to_chat_prompt(prompt)
-
     def to_openai_create_prompt(self) -> OpenAICreateChatPrompt:
         if is_chat_prompt(self.raw_prompt):
             return self.raw_prompt
-        return self._render_text_as_chat_prompt(self.raw_prompt)
+        return _render_text_as_chat_prompt(self.raw_prompt)

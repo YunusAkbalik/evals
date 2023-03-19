@@ -14,7 +14,7 @@ import threading
 import time
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, Callable
 
 import blobfile as bf
 
@@ -440,7 +440,7 @@ class Recorder(RecorderBase):
 #########################################################################
 
 
-def current_sample_id() -> str:
+def current_sample_id() -> Callable[[], str | None]:
     return default_recorder().current_sample_id
 
 

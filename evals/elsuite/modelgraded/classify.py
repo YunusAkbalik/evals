@@ -93,20 +93,20 @@ class ModelBasedClassify(evals.Eval):
     invalid_request_during_evaluation = 0
 
     def __init__(
-        self,
-        model_specs: evals.ModelSpecs,
-        samples_jsonl: str,
-        modelgraded_spec_file: str,
-        *args,
-        match_fn: str = "starts_or_endswith",
-        max_tokens: int = 1024,
-        multicomp_n: int = 1,
-        multicomp_temperature: float = 0.4,
-        samples_renamings: Optional[dict[str, str]] = None,
-        eval_type: Optional[str] = None,
-        metaeval: bool = False,
-        modelgraded_spec_args: Optional[dict[str, dict[str, str]]] = None,
-        **kwargs,
+            self,
+            model_specs: evals.ModelSpecs,
+            samples_jsonl: str,
+            modelgraded_spec_file: str,
+            *args,
+            match_fn: str = "starts_or_endswith",
+            max_tokens: int = 1024,
+            multicomp_n: int = 1,
+            multicomp_temperature: float = 0.4,
+            samples_renamings: Optional[dict[str, str]] = None,
+            eval_type: Optional[str] = None,
+            metaeval: bool = False,
+            modelgraded_spec_args: Optional[dict[str, dict[str, str]]] = None,
+            **kwargs,
     ):
         super().__init__(model_specs, *args, **kwargs)
         self.max_tokens = max_tokens
@@ -278,7 +278,7 @@ class ModelBasedClassify(evals.Eval):
                 metrics[metric] = choice
                 if self.metaeval:
                     assert (
-                        metric in test_sample
+                            metric in test_sample
                     ), f"Missing label for metric '{metric}' in sample {test_sample.keys()}"
                     metrics[metric + "_metascore"] = choice == test_sample[metric]
 
