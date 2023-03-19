@@ -64,7 +64,7 @@ We provide the option for you to log your eval results to a Snowflake database, 
 
 Do you have any examples of how to build an eval from start to finish?
 
-- Yes! These are in the `examples` folder. We recommend that you also read through [build-eval.md](docs/build-eval.md) in order to gain a deeper understanding of what is happening in these examples.
+- Yes! These are in the `docs` folder. We recommend that you also read through [build-eval.md](docs/build-eval.md) in order to gain a deeper understanding of what is happening in these examples.
 
 Do you have any examples of evals implemented in multiple different ways?
 
